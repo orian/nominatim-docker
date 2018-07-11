@@ -20,6 +20,8 @@ RUN apt-get -y update -qq && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/* /var/tmp/*
 
+RUN pip install --upgrade pip
+
 WORKDIR /app
 
 # Configure postgres
@@ -40,8 +42,9 @@ COPY local.php /app/src/build/settings/local.php
 COPY nominatim.conf /etc/apache2/sites-enabled/000-default.conf
 
 # Load initial data
-ARG PBF_DATA=http://download.geofabrik.de/europe/monaco-latest.osm.pbf
-RUN curl -L -f $PBF_DATA --create-dirs -o /app/src/data.osm.pbf
+#ARG PBF_DATA=http://download.geofabrik.de/europe/monaco-latest.osm.pbf
+#RUN curl -L -f $PBF_DATA --create-dirs -o /app/src/data.osm.pbf
+COPY data.osm.pbf /app/src/data.osm.pbf
 RUN curl http://www.nominatim.org/data/country_grid.sql.gz > /app/src/data/country_osm_grid.sql.gz
 RUN service postgresql start && \
     sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='nominatim'" | grep -q 1 || sudo -u postgres createuser -s nominatim && \
@@ -51,6 +54,8 @@ RUN service postgresql start && \
     chown -R nominatim:nominatim ./src && \
     sudo -u nominatim ./src/build/utils/setup.php --osm-file /app/src/data.osm.pbf --all --threads 2 && \
     service postgresql stop
+
+RUN rm /app/src/data.osm.pbf
 
 EXPOSE 5432
 EXPOSE 8080
